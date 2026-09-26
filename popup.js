@@ -75,12 +75,21 @@ window.addEventListener("ll-custom", (ev) => {
   }
 });
 
+function removePopupFromUrl() {
+  const url = new URL(window.location.href);
+
+  url.searchParams.delete("popup");
+  window.history.replaceState(window.history.state, "", url);
+}
+
 function checkUrlForPopup() {
   const params = new URLSearchParams(window.location.search);
 
   const id = params.get("popup");
 
   if (!id) return;
+
+  removePopupFromUrl();
 
   const tryOpen = () => {
     if (getHass()) {

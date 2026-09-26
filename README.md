@@ -90,6 +90,17 @@ tap_action:
 This works the same way for `hold_action` and `double_tap_action` if you
 want different content on a long-press.
 
+You can also open a registered popup by navigating to its URL parameter:
+
+```yaml
+tap_action:
+  action: navigate
+  navigation_path: ?popup=google_tv_remote
+```
+
+This approach uses the standard navigation action and avoids breaking the
+card's visual UI editor, which can happen with `fire-dom-event` on some cards.
+
 ### One-off inline popups (no `id`, not URL-openable)
 
 If you don't need to reuse or deep-link to a popup, you can skip
