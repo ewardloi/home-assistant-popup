@@ -78,6 +78,8 @@ window.addEventListener("ll-custom", (ev) => {
 function removePopupFromUrl() {
   const url = new URL(window.location.href);
 
+  if (!url.searchParams.has("popup")) return;
+
   url.searchParams.delete("popup");
   window.history.replaceState(window.history.state, "", url);
 }
@@ -88,8 +90,6 @@ function checkUrlForPopup() {
   const id = params.get("popup");
 
   if (!id) return;
-
-  removePopupFromUrl();
 
   const tryOpen = () => {
     if (getHass()) {
@@ -253,6 +253,9 @@ class PopupDialog extends LitElement {
         detail: { dialog: this.localName },
       })
     );
+
+    setTimeout(removePopupFromUrl, 100)
+
     return true;
   }
 
