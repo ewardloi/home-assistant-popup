@@ -45,14 +45,37 @@ function effectiveCard(config) {
   return config?.hide_border ? withoutBorder(config.card) : config?.card;
 }
 
-async function createCard(card, getHass, rebuild, hideBorder = false) {
+function rootCss(config) {
+  return [config?.hide_border ? "ha-card { border: none; }" : "", config?.custom_css || ""]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function applyRootCss(element, css) {
+  let attempts = 0;
+
+  const apply = () => {
+    const root = element.shadowRoot;
+
+    if (!root) {
+      if (++attempts < 300) requestAnimationFrame(apply);
+      return;
+    }
+
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+  };
+
+  apply();
+}
+
+async function createCard(card, getHass, rebuild, css = "") {
   const helpers = await window.loadCardHelpers();
 
   const element = helpers.createCardElement(card);
 
-  if (hideBorder) {
-    element.style.setProperty("--ha-card-border-width", "0px");
-  }
+  if (css) applyRootCss(element, css);
 
   element.addEventListener(
     "ll-rebuild",
@@ -95,7 +118,7 @@ function openPopup(config) {
           hass: getHass(),
           title: config.title,
           card: effectiveCard(config),
-          hide_border: !!config.hide_border,
+          css: rootCss(config),
         },
       },
     })
@@ -243,6 +266,7 @@ class PopupDefinition extends LitElement {
       title: this._config.title,
       card: this._config.card,
       hide_border: !!this._config.hide_border,
+      custom_css: this._config.custom_css,
     };
 
     this._registeredId = this._config.id;
@@ -265,7 +289,7 @@ class PopupDefinition extends LitElement {
       () => {
         if (config === this._config) this._buildPreviewCard();
       },
-      !!config.hide_border
+      rootCss(config)
     );
 
     if (config !== this._config) return;
@@ -341,13 +365,15 @@ function loadCardEditors() {
 const EDITOR_LABELS = {
   title: "Title",
   id: "Id",
-  hide_border: "Remove border from the inner card",
+  hide_border: "Remove border",
+  custom_css: "Custom CSS",
 };
 
 const EDITOR_SCHEMA = [
   { name: "title", selector: { text: {} } },
   { name: "id", required: true, selector: { text: {} } },
   { name: "hide_border", selector: { boolean: {} } },
+  { name: "custom_css", selector: { text: { multiline: true } } },
 ];
 
 class PopupDefinitionEditor extends LitElement {
@@ -413,6 +439,7 @@ class PopupDefinitionEditor extends LitElement {
       if (config[key] === undefined) delete config[key];
     }
     if (!config.hide_border) delete config.hide_border;
+    if (!config.custom_css) delete config.custom_css;
     if (!config.title) delete config.title;
 
     this._config = config;
@@ -422,9 +449,9 @@ class PopupDefinitionEditor extends LitElement {
   _formChanged(ev) {
     ev.stopPropagation();
 
-    const { title, id, hide_border } = ev.detail.value;
+    const { title, id, hide_border, custom_css } = ev.detail.value;
 
-    this._update({ title, id, hide_border });
+    this._update({ title, id, hide_border, custom_css });
   }
 
   _cardPicked(ev) {
@@ -495,6 +522,7 @@ class PopupDefinitionEditor extends LitElement {
           title: this._config.title ?? "",
           id: this._config.id ?? "",
           hide_border: !!this._config.hide_border,
+          custom_css: this._config.custom_css ?? "",
         }}
         .schema=${EDITOR_SCHEMA}
         .computeLabel=${(schema) => EDITOR_LABELS[schema.name] ?? schema.name}
@@ -550,7 +578,7 @@ class PopupDialog extends LitElement {
       () => {
         if (params === this._params) this._buildCard();
       },
-      !!params.hide_border
+      params.css
     );
 
     if (params !== this._params) return;
