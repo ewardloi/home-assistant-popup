@@ -45,6 +45,40 @@ function effectiveCard(config) {
   return config?.hide_border ? withoutBorder(config.card) : config?.card;
 }
 
+async function createCard(card, getHass, rebuild, hideBorder = false) {
+  const helpers = await window.loadCardHelpers();
+
+  const element = helpers.createCardElement(card);
+
+  if (hideBorder) {
+    element.style.setProperty("--ha-card-border-width", "0px");
+  }
+
+  element.addEventListener(
+    "ll-rebuild",
+    (ev) => {
+      ev.stopPropagation();
+      rebuild();
+    },
+    { once: true }
+  );
+
+  element.addEventListener(
+    "ll-upgrade",
+    (ev) => {
+      ev.stopPropagation();
+      const hass = getHass();
+      if (hass) element.hass = hass;
+    },
+    { once: true }
+  );
+
+  const hass = getHass();
+  if (hass) element.hass = hass;
+
+  return element;
+}
+
 function openPopup(config) {
   const haMain = getHassRoot();
 
@@ -61,6 +95,7 @@ function openPopup(config) {
           hass: getHass(),
           title: config.title,
           card: effectiveCard(config),
+          hide_border: !!config.hide_border,
         },
       },
     })
@@ -223,13 +258,19 @@ class PopupDefinition extends LitElement {
     }
 
     const config = this._config;
-    const helpers = await window.loadCardHelpers();
+
+    const element = await createCard(
+      card,
+      () => this.hass,
+      () => {
+        if (config === this._config) this._buildPreviewCard();
+      },
+      !!config.hide_border
+    );
 
     if (config !== this._config) return;
 
-    this._cardEl = helpers.createCardElement(card);
-
-    if (this.hass) this._cardEl.hass = this.hass;
+    this._cardEl = element;
 
     this.requestUpdate();
   }
@@ -501,10 +542,20 @@ class PopupDialog extends LitElement {
   async _buildCard() {
     if (!this._params?.card) return;
 
-    const helpers = await window.loadCardHelpers();
+    const params = this._params;
 
-    this._cardEl = helpers.createCardElement(this._params.card);
-    this._cardEl.hass = this.hass;
+    const element = await createCard(
+      params.card,
+      () => this.hass,
+      () => {
+        if (params === this._params) this._buildCard();
+      },
+      !!params.hide_border
+    );
+
+    if (params !== this._params) return;
+
+    this._cardEl = element;
 
     this.requestUpdate();
   }
