@@ -181,10 +181,6 @@ class PopupDefinition extends LitElement {
     return document.createElement("popup-definition-editor");
   }
 
-  static getStubConfig() {
-    return { id: "my_popup", title: "" };
-  }
-
   setConfig(config) {
 
     this._config = config || {};
@@ -303,7 +299,7 @@ function loadCardEditors() {
 
 const EDITOR_LABELS = {
   title: "Title",
-  id: "ID",
+  id: "Id",
   hide_border: "Remove border from the inner card",
 };
 
